@@ -2,4 +2,4 @@ streamlit
 openai
 python-dotenv
 datasets
-pinecone-client
+pinecone
