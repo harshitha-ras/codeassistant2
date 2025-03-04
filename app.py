@@ -3,7 +3,7 @@ import streamlit as st
 import openai
 from dotenv import load_dotenv
 from unstructured.partition.auto import partition
-import pysqlite3
+__import__('pysqlite3')
 import sys
 sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 import chromadb
