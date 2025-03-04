@@ -75,6 +75,3 @@ if query:
     context = "\n".join(relevant_chunks)
     response = generate_response(query, context)
     st.write(response)
-
-if __name__ == "__main__":
-    st.run()
