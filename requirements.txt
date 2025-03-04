@@ -3,3 +3,4 @@ openai
 python-dotenv
 chromadb
 datasets
+pysqlite3-binary
