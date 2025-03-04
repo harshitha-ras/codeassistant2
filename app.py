@@ -1,43 +1,38 @@
 import streamlit as st
 import openai
+import pinecone
 from datasets import load_dataset
-import chromadb
-from chromadb.utils import embedding_functions
-import pysqlite3 as sqlite3
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-
-# Load environment variables
 import os
 from dotenv import load_dotenv
+
+# Load environment variables
 load_dotenv()
 
+# Initialize OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Initialize ChromaDB
-chroma_client = chromadb.Client()
-openai_ef = embedding_functions.OpenAIEmbeddingFunction(
-    api_key=openai.api_key,
-    model_name="text-embedding-ada-002"
-)
-collection = chroma_client.create_collection(name="code_chunks", embedding_function=openai_ef)
+# Initialize Pinecone
+pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment=os.getenv("PINECONE_ENVIRONMENT"))
+index_name = "code-assistant"
+if index_name not in pinecone.list_indexes():
+    pinecone.create_index(index_name, dimension=1536)  # OpenAI embeddings are 1536 dimensions
+index = pinecone.Index(index_name)
+
+def get_embedding(text):
+    response = openai.Embedding.create(input=text, model="text-embedding-ada-002")
+    return response['data'][0]['embedding']
 
 def load_and_process_data():
-    dataset = load_dataset("code_search_net", "python", split="train", streaming=True, trust_remote_code=True)
-    for item in dataset.take(1000):  # Limit to 1000 examples for demonstration
+    dataset = load_dataset("code_search_net", "python", split="train", streaming=True)
+    for i, item in enumerate(dataset.take(1000)):  # Limit to 1000 examples for demonstration
         code = item['code']
-        collection.add(
-            documents=[code],
-            ids=[f"chunk_{item['url']}"]
-        )
+        embedding = get_embedding(code)
+        index.upsert([(str(i), embedding, {"code": code})])
 
-def semantic_search(query, n_results=3):
-    results = collection.query(
-        query_texts=[query],
-        n_results=n_results
-    )
-    return results['documents'][0]
+def semantic_search(query, k=3):
+    query_embedding = get_embedding(query)
+    results = index.query(query_embedding, top_k=k, include_metadata=True)
+    return [match['metadata']['code'] for match in results['matches']]
 
 def generate_response(query, context):
     prompt = f"Context:\n{context}\n\nQuery: {query}\n\nResponse:"
@@ -50,7 +45,7 @@ def generate_response(query, context):
     )
     return response.choices[0].message['content']
 
-st.title("Coding Assistant with RAG")
+st.title("Coding Assistant with RAG (Pinecone)")
 
 if 'data_loaded' not in st.session_state:
     with st.spinner("Loading and processing data..."):
