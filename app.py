@@ -1,16 +1,14 @@
-import os
 import streamlit as st
 import openai
-from dotenv import load_dotenv
-from unstructured.partition.auto import partition
-__import__('pysqlite3')
-import sys
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+from datasets import load_dataset
 import chromadb
 from chromadb.utils import embedding_functions
 
 # Load environment variables
+import os
+from dotenv import load_dotenv
 load_dotenv()
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Initialize ChromaDB
@@ -21,25 +19,14 @@ openai_ef = embedding_functions.OpenAIEmbeddingFunction(
 )
 collection = chroma_client.create_collection(name="code_chunks", embedding_function=openai_ef)
 
-def extract_text(file):
-    elements = partition(file)
-    return "\n".join([str(el) for el in elements])
-
-def chunk_text(text, chunk_size=1000, overlap=200):
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start = end - overlap
-    return chunks
-
-def store_chunks(chunks):
-    collection.add(
-        documents=chunks,
-        ids=[f"chunk_{i}" for i in range(len(chunks))]
-    )
+def load_and_process_data():
+    dataset = load_dataset("code_search_net", "python", split="train", streaming=True)
+    for item in dataset.take(1000):  # Limit to 1000 examples for demonstration
+        code = item['code']
+        collection.add(
+            documents=[code],
+            ids=[f"chunk_{item['url']}"]
+        )
 
 def semantic_search(query, n_results=3):
     results = collection.query(
@@ -61,12 +48,10 @@ def generate_response(query, context):
 
 st.title("Coding Assistant with RAG")
 
-uploaded_file = st.file_uploader("Upload a file to add to the database", type=["txt", "py"])
-if uploaded_file:
-    text = extract_text(uploaded_file)
-    chunks = chunk_text(text)
-    store_chunks(chunks)
-    st.success("File processed and added to the database")
+if 'data_loaded' not in st.session_state:
+    with st.spinner("Loading and processing data..."):
+        load_and_process_data()
+    st.session_state.data_loaded = True
 
 query = st.text_input("Enter your coding question:")
 
