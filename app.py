@@ -1,6 +1,6 @@
 import streamlit as st
 import openai
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 from datasets import load_dataset
 import os
 from dotenv import load_dotenv
@@ -12,11 +12,20 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Initialize Pinecone
-pinecone.init(api_key=os.getenv("PINECONE_API_KEY"), environment=os.getenv("PINECONE_ENVIRONMENT"))
+pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+
 index_name = "code-assistant"
-if index_name not in pinecone.list_indexes():
-    pinecone.create_index(index_name, dimension=1536)  # OpenAI embeddings are 1536 dimensions
-index = pinecone.Index(index_name)
+if index_name not in pc.list_indexes().names():
+    pc.create_index(
+        name=index_name,
+        dimension=1536,  # OpenAI embeddings are 1536 dimensions
+        metric='cosine',
+        spec=ServerlessSpec(
+            cloud='aws',
+            region='us-west-2'  # Change this to your preferred region
+        )
+    )
+index = pc.Index(index_name)
 
 def get_embedding(text):
     response = openai.Embedding.create(input=text, model="text-embedding-ada-002")
@@ -27,11 +36,11 @@ def load_and_process_data():
     for i, item in enumerate(dataset.take(1000)):  # Limit to 1000 examples for demonstration
         code = item['code']
         embedding = get_embedding(code)
-        index.upsert([(str(i), embedding, {"code": code})])
+        index.upsert(vectors=[(str(i), embedding, {"code": code})])
 
 def semantic_search(query, k=3):
     query_embedding = get_embedding(query)
-    results = index.query(query_embedding, top_k=k, include_metadata=True)
+    results = index.query(vector=query_embedding, top_k=k, include_metadata=True)
     return [match['metadata']['code'] for match in results['matches']]
 
 def generate_response(query, context):
