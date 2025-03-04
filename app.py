@@ -23,7 +23,7 @@ openai_ef = embedding_functions.OpenAIEmbeddingFunction(
 collection = chroma_client.create_collection(name="code_chunks", embedding_function=openai_ef)
 
 def load_and_process_data():
-    dataset = load_dataset("code_search_net", "python", split="train", streaming=True)
+    dataset = load_dataset("code_search_net", "python", split="train", streaming=True, trust_remote_code=True)
     for item in dataset.take(1000):  # Limit to 1000 examples for demonstration
         code = item['code']
         collection.add(
