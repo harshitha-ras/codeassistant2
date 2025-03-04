@@ -3,6 +3,9 @@ import openai
 from datasets import load_dataset
 import chromadb
 from chromadb.utils import embedding_functions
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 # Load environment variables
 import os
