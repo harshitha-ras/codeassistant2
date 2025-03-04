@@ -4,3 +4,4 @@ python-dotenv
 unstructured
 chromadb
 pysqlite3-binary
+chromadb-pysqlite3
