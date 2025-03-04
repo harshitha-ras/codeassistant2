@@ -32,7 +32,7 @@ def get_embedding(text):
     return response['data'][0]['embedding']
 
 def load_and_process_data():
-    dataset = load_dataset("code_search_net", "python", split="train", streaming=True)
+    dataset = load_dataset("code_search_net", "python", split="train", streaming=True, trust_remote_code=True)
     for i, item in enumerate(dataset.take(1000)):  # Limit to 1000 examples for demonstration
         code = item['code']
         embedding = get_embedding(code)
