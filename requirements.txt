@@ -1,6 +1,6 @@
 streamlit
 openai
 python-dotenv
-chromadb==0.4.9
 datasets
 pysqlite3-binary
+chromadb==0.3.29
