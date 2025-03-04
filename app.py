@@ -34,7 +34,7 @@ def get_embedding(text):
 def load_and_process_data():
     dataset = load_dataset("Nan-Do/code-search-net-python", split="train", streaming=True)
     for i, item in enumerate(dataset.take(1000)):  # Limit to 1000 examples
-        code = item['original_string']
+        code = item['code']
         embedding = get_embedding(code)
         index.upsert(vectors=[(str(i), embedding, {"code": code})])
 
