@@ -2,6 +2,6 @@ streamlit
 openai
 python-dotenv
 unstructured
-chromadb
+chromadb==0.3.29
 pysqlite3-binary
 chromadb-pysqlite3
